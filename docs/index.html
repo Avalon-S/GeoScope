@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>GeoScope</title>
+  <meta name="description" content="Frozen VLMs undercount aerial objects beyond a counting horizon of about five per view. GeoScope runs typed programs in which the VLM only grounds and counts, in views an executor chooses, splits views counted beyond the horizon and computes spatial relations from the grounded boxes." />
+  <meta property="og:title" content="GeoScope: Training-Free Program Execution beyond the Counting Horizon for Ultra-High-Resolution Remote Sensing Question Answering" />
+  <meta property="og:description" content="Same frozen Qwen3-VL-8B, held-out test questions: +16.3 regional counting and +10.5 spatial relations on XLRS-Bench, +11.4 MME-RealWorld counting, +36.2 UHR-Micro regional counting. Nothing is trained." />
+  <meta property="og:url" content="https://avalon-s.github.io/GeoScope/" />
+  <meta name="theme-color" content="#3a9a84" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-16 -16 32 32'%3E%3Ccircle r='12' fill='%23f2f7f5' stroke='%231d5e5c' stroke-width='3.4'/%3E%3Crect x='-3' y='-16.5' width='6' height='5' rx='1' fill='%23c39437'/%3E%3Cg fill='%23db7f9f'%3E%3Cg id='p'%3E%3Cpath d='M0 -.7C-2.4 -2 -2.5 -5.8 -.7 -6.3Q0 -5.9 .7 -6.3C2.5 -5.8 2.4 -2 0 -.7Z'/%3E%3C/g%3E%3Cuse href='%23p' transform='rotate(72)'/%3E%3Cuse href='%23p' transform='rotate(144)'/%3E%3Cuse href='%23p' transform='rotate(216)'/%3E%3Cuse href='%23p' transform='rotate(288)'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=Marcellus+SC&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="static/css/style.css" />
+  <script>/* theme chosen with the button in the nav, kept for this viewer only */
+    try { var t = localStorage.getItem("gs-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+    /* the opening covers the page from the first paint; ?still and links into a section go without it */
+    if (/[?&]still/.test(location.search) || location.hash.length > 1) document.documentElement.classList.add("no-intro");
+  </script>
+  <noscript><style>.fx-intro { display: none !important; }</style></noscript>
+</head>
+<body>
+
+<!-- the embroidery hoop (the scope) and the plum blossom, drawn once and reused -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="petal" viewBox="-10 -10 20 20">
+    <path d="M0 -1.2C-3.6 -3 -3.7 -8.6 -1 -9.4Q0 -8.8 1 -9.4C3.7 -8.6 3.6 -3 0 -1.2Z" />
+  </symbol>
+  <symbol id="blossom" viewBox="-10 -10 20 20">
+    <g style="fill:var(--accent)">
+      <use href="#petal" width="20" height="20" x="-10" y="-10" />
+      <use href="#petal" width="20" height="20" x="-10" y="-10" transform="rotate(72)" />
+      <use href="#petal" width="20" height="20" x="-10" y="-10" transform="rotate(144)" />
+      <use href="#petal" width="20" height="20" x="-10" y="-10" transform="rotate(216)" />
+      <use href="#petal" width="20" height="20" x="-10" y="-10" transform="rotate(288)" />
+    </g>
+    <circle r="1.7" style="fill:var(--gold)" />
+  </symbol>
+  <symbol id="hoop" viewBox="-17 -18 34 35">
+    <circle r="12.4" fill="none" style="stroke:var(--primary-deep)" stroke-width="3.6" />
+    <circle r="9.6" fill="none" style="stroke:var(--gold)" stroke-width="1.1" />
+    <rect x="-3.2" y="-17.6" width="6.4" height="5.2" rx="1.2" style="fill:var(--gold)" />
+    <line x1="-5.4" y1="-15" x2="5.4" y2="-15" style="stroke:var(--gold)" stroke-width="1.4" stroke-linecap="round" />
+    <use href="#blossom" x="-6.6" y="-6.6" width="13.2" height="13.2" />
+  </symbol>
+</svg>
+
+<a class="skip" href="#finding">Skip to content</a>
+
+<nav class="nav" aria-label="Sections">
+  <div class="container">
+    <a class="brand" href="#top"><svg class="brand-mark" aria-hidden="true"><use href="#hoop" /></svg><span class="brand-word">Geo<span>Scope</span></span></a>
+    <div class="nav-r">
+      <ul>
+        <li><a href="#finding">Finding</a></li>
+        <li><a href="#method">Method</a></li>
+        <li><a href="#subdivide">Subdivision</a></li>
+        <li><a href="#places">Places</a></li>
+        <li><a href="#directions">Directions</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#examples">Examples</a></li>
+        <li><a href="#limits">Limits</a></li>
+        <li><a href="#bibtex">BibTeX</a></li>
+      </ul>
+      <button type="button" class="theme-btn" id="themeBtn" aria-label="Switch between the light and the dark page">
+        <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor" /><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3 7 7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7" /></g></svg>
+        <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.6A8.4 8.4 0 0 1 9.4 4 8.4 8.4 0 1 0 20 14.6z" fill="currentColor" /></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<canvas class="fx-intro" id="fxIntro" aria-hidden="true"></canvas>
+
+<!-- ─────────────────────────── hero ─────────────────────────── -->
+<header class="hero" id="top">
+  <div class="hero-deco" aria-hidden="true">
+    <div class="guide g1"></div><div class="guide g2"></div>
+    <svg class="silk" viewBox="0 0 1200 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="silkG" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" style="stop-color:var(--silk)" stop-opacity="0" />
+          <stop offset=".35" style="stop-color:var(--silk)" stop-opacity=".55" />
+          <stop offset=".7" style="stop-color:var(--silk)" stop-opacity=".35" />
+          <stop offset="1" style="stop-color:var(--silk)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <path class="s1" d="M-20 250C160 170 300 300 470 230S760 120 900 190S1110 300 1230 210" stroke="url(#silkG)" stroke-width="18" />
+      <path class="s2" d="M-20 320C140 280 260 360 420 320S700 230 860 280S1080 360 1230 300" stroke="url(#silkG)" stroke-width="9" />
+      <path class="s3" d="M60 130C220 90 330 170 520 140S820 60 980 110S1150 170 1230 130" stroke="url(#silkG)" stroke-width="6" />
+    </svg>
+    <div class="blind l"><span class="cord"></span></div>
+    <div class="blind r"><span class="cord"></span></div>
+    <svg class="branch" id="heroBranch" viewBox="0 0 520 300"></svg>
+    <svg class="branch l" id="heroBranchL" viewBox="0 0 520 300"></svg>
+  </div>
+  <div class="container">
+    <span class="eyebrow"><i class="bl"></i>Ultra-high-resolution remote sensing &middot; VQA &middot; Training-free<i class="bl"></i></span>
+    <h1 class="title" id="title" title="Play the opening again">Geo<span class="scope">Sc<svg class="o-hoop" aria-hidden="true"><use href="#hoop" /></svg><span class="sr">o</span>pe</span></h1>
+    <div class="title-plate">
+    <p class="subtitle">Training-Free Program Execution beyond the Counting Horizon for<br class="br-wide"> <span class="nobr">Ultra-High-Resolution</span> <span class="nobr">Remote Sensing</span> Question Answering</p>
+    <p class="authors">Guohui&nbsp;Deng<sup>1,2,*,&dagger;</sup>, <a href="https://avalon-s.github.io/" target="_blank" rel="noopener">Yuhang&nbsp;Jiang</a><sup>1,*</sup>, Chengjun&nbsp;Wang<sup>3</sup>,
+      Zhongwen&nbsp;Hu<sup>4</sup>, Zhaocong&nbsp;Wu<sup>5</sup>, Linsheng&nbsp;Huang<sup>1</sup>, Jinling&nbsp;Zhao<sup>1</sup>, Chao&nbsp;Ruan<sup>1</sup>,
+      Miaozhong&nbsp;Xu<sup>6</sup>, Chi&nbsp;Chen<sup>6</sup></p>
+    <p class="affil">
+      <span><sup>1</sup>School of Internet, Anhui University</span>
+      <span><sup>2</sup>National Engineering Research Center for Agro-Ecological Big Data Analysis and Application, Anhui University</span>
+      <span><sup>3</sup>School of Computer Science and Cyberspace Security, Xiangtan University</span>
+      <span><sup>4</sup>School of Architecture and Urban Planning, Shenzhen University</span>
+      <span><sup>5</sup>School of Remote Sensing and Information Engineering, Wuhan University</span>
+      <span><sup>6</sup>State Key Laboratory of Information Engineering in Surveying, Mapping and Remote Sensing, Wuhan University</span>
+      <span class="note"><sup>*</sup>Equal contribution &middot; <sup>&dagger;</sup>Corresponding author</span>
+    </p>
+    </div>
+    <div class="btns">
+      <span class="btn soon" title="The paper will be linked on release">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v2H4zm0 7h16v2H4zm0 7h10v2H4z" /></svg>Paper <span class="tag">soon</span></span>
+      <a class="btn" href="https://github.com/Avalon-S/GeoScope" target="_blank" rel="noopener" title="Code and prompts will be released with the paper">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.4 11.4 0 016 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0023.5 12C23.5 5.7 18.3.5 12 .5z" /></svg>Code <span class="tag">on publication</span></a>
+      <a class="btn" href="#bibtex">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6V2zm8 1.5V8h4.5L14 3.5zM8 12h8v1.6H8zm0 3.5h8v1.6H8z" /></svg>BibTeX</a>
+    </div>
+
+    <figure class="scope-stage">
+      <div class="scope-frame">
+        <canvas id="heroScope" aria-label="An aerial scene under an embroidery hoop. Moving the hoop shows how many cars are in its view and whether that is within the counting horizon of five."></canvas>
+        <div class="scope-ctl" role="group" aria-label="Hoop controls">
+          <button type="button" id="scopeWider" aria-label="Take in more of the scene">&minus;</button>
+          <span id="scopeSize" aria-live="polite"></span>
+          <button type="button" id="scopeNarrower" aria-label="Take in less of the scene">+</button>
+          <button type="button" class="lock" id="scopeLock">Split this view</button>
+        </div>
+        <div class="scope-hud" id="heroHud" aria-live="polite"></div>
+      </div>
+      <figcaption>Move the hoop over the scene and widen or narrow it with &minus; and +. The more of the scene it takes
+        in, the more cars it holds, and the counting horizon limits that number. Click to hold a view and stitch it into
+        parts until every part holds five cars or fewer.
+        <span class="muted">Illustration; the scene is drawn procedurally.</span></figcaption>
+    </figure>
+  </div>
+</header>
+
+<div class="container">
+  <div class="stats frame" id="stats"></div>
+</div>
+
+<section class="block">
+  <div class="container narrow">
+    <div class="card tldr">
+      On DOTA aerial images, all eight open vision-language models we tested fall increasingly short beyond a number of
+      objects per view, about five for most of them. Past that <strong>counting horizon</strong> they estimate, and the
+      horizon shrinks as views grow and objects appear smaller. Splitting a view recovers the shortfall but adds spurious
+      counts in empty parts. In GeoScope, a text-only model writes the question as a typed program. A deterministic
+      executor chooses the views and asks the frozen VLM only to ground and count in them; it splits views counted beyond
+      the horizon and computes spatial relations from the grounded boxes. With Qwen3-VL-8B and nothing trained, accuracy on
+      held-out questions rises by 16.3 points on XLRS-Bench regional counting, 10.5 on spatial relations and 11.4 on
+      MME-RealWorld counting, and UHR-Micro regional counting by 36.2.
+    </div>
+    <details class="abstract">
+      <summary>Read the abstract</summary>
+      <p>In ultra-high-resolution (UHR) remote sensing images, the objects that questions count in a region or relate by
+      direction often span only a few pixels. Existing methods mainly decide where a vision&ndash;language model
+      (VLM) should look and trust its answer in the chosen view. We show that this assumption fails for counting, and
+      measure VLMs as one calibrates a sensor. All eight open VLMs tested fall increasingly short once a view holds
+      more than a certain number of objects, about five for most on DOTA aerial images. This <em>counting
+      horizon</em> narrows as views grow and objects appear smaller. An empirical power-law response model predicts
+      the undercount a split recovers and the spurious counts it adds, and supports the rule of splitting only views
+      beyond the horizon. In GeoScope, a text-only language model parses the question into a typed spatial program
+      that fixes the region and its resolution. The VLM only grounds and counts within its operating range, and
+      directions are computed explicitly from the grounded boxes. To our knowledge, it is the first UHR method to
+      split views by a measured limit of the VLM. Without training, it improves Qwen3-VL-8B by 16.3 points on
+      regional counting and 10.5 on spatial relations in XLRS-Bench, and has the highest reported accuracy, trained
+      methods included, on regional counting and on the whole benchmark by question. On UHR-Micro it improves global
+      and regional counting by 16.8 and 36.2 points, 15.6 of the former from splitting. On MME-RealWorld counting it
+      gains 11.4 points, and we show that an option that is almost never correct yet often chosen distorts comparisons
+      there.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ─────────────────────────── finding ─────────────────────────── -->
+<section class="block alt" id="finding">
+  <div class="container">
+    <div class="kicker">The finding</div>
+    <h2>A VLM counts reliably up to about <em class="pk">five</em> objects and estimates beyond.</h2>
+    <p class="lede">We cut 960 crops from DOTA-v1.5 training images, none of them in any benchmark we evaluate, and asked
+      Qwen3-VL-8B how many cars, trucks, ships or storage tanks each one holds. Every dot is one crop. Up to about five
+      objects the answers scatter around the truth. Beyond that most fall below it, and many are round numbers. The
+      shortfall also depends on the view. Crops of 256 pixels, shown enlarged threefold, stay within 21% up to 160
+      objects, while crops of 2,048 pixels at native resolution fall short at every number of objects. Switch to
+      subdivision to see the same crops counted by GeoScope's rule.</p>
+
+    <div class="seg-wrap">
+      <div class="seg" role="group" aria-label="How the crops are counted" id="hzMode">
+        <button type="button" data-mode="native" aria-pressed="true">One view</button>
+        <button type="button" data-mode="recursive_h5" aria-pressed="false">Subdivision below the horizon</button>
+      </div>
+      <div class="seg" role="group" aria-label="Chart" id="hzTab">
+        <button type="button" data-tab="crops" aria-pressed="true">Every crop, 8B</button>
+        <button type="button" data-tab="models" aria-pressed="false">Eight models</button>
+      </div>
+    </div>
+
+    <div class="horizon-grid">
+      <div class="card chart-card">
+        <div class="chart" id="hzChart"></div>
+        <div class="legend" id="hzLegend"></div>
+      </div>
+      <div class="card sampler">
+        <div class="lbl">Real answers, one bin at a time</div>
+        <div class="chips" id="hzBins" role="group" aria-label="Objects in view"></div>
+        <canvas id="hzCrop" width="236" height="236" aria-label="A schematic crop with the chosen number of objects, held in a hoop"></canvas>
+        <div class="answers" id="hzAnswers"></div>
+        <p class="fine">Answers are Qwen3-VL-8B's, for real crops in the chosen bin. The drawn crop is schematic.</p>
+      </div>
+    </div>
+    <div class="binstats" id="hzStats"></div>
+
+    <div class="callout"><span class="dot"></span><div>Most of the eight models fall short by more than 20% from 6 to 10
+      objects onward; Qwen3-VL-2B already from three to five, and InternVL3.5, which overcounts small sets, only beyond
+      40. Qwen3-VL-32B, which we could reach only through an API, is shown dashed. On sets of up to 20 objects,
+      <b>listing every object first, or the reasoning variant Qwen3-VL-8B-Thinking, is not significantly more exact</b>,
+      by 1.3 and 4.6 points of exact answers.</div></div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── method ─────────────────────────── -->
+<section class="block" id="method">
+  <div class="container">
+    <div class="kicker">GeoScope</div>
+    <h2>The question becomes a typed program, and the executor chooses <em>every view</em>.</h2>
+    <p class="lede">A frozen Qwen3-4B reads only the question and writes a typed program. It never sees the image or the
+      options. A deterministic executor runs the program and uses the frozen VLM through two narrow ports only: ground a
+      phrase in a window, or count a phrase in a window. The executor decides which windows, at what scale, and how the
+      answers combine. Pick an example and click a stage.</p>
+    <div class="seg-wrap">
+      <div class="seg" role="group" aria-label="Example question" id="pipeEx">
+        <button type="button" data-ex="count" aria-pressed="true">A counting question</button>
+        <button type="button" data-ex="relation" aria-pressed="false">A relation question</button>
+      </div>
+    </div>
+    <div class="pipe" id="pipe" role="tablist" aria-label="Pipeline stages"></div>
+    <div class="vlm-ports" aria-hidden="true">
+      <div class="helix"><svg id="helix" viewBox="0 0 34 112"></svg></div>
+      <div class="ports-box">Frozen Qwen3-VL-8B<span>ground(window, phrase) &middot; count(window, phrase)</span></div>
+    </div>
+    <div class="card pipe-detail" id="pipeDetail" role="tabpanel" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── subdivision ─────────────────────────── -->
+<section class="block alt" id="subdivide">
+  <div class="container">
+    <div class="kicker">Counting below the horizon</div>
+    <h2>Stitch every view into parts until each holds <em class="pk">five</em> objects or fewer.</h2>
+    <p class="lede">The executor asks the VLM to count the whole region first. A count above five is an estimate, so the
+      view is split into four and each part is counted again, down to cells of 256 pixels. A zero from a view shown at
+      reduced resolution is not trusted either, because small objects vanish when a view is shrunk. The answer is the
+      sum over the accepted views. Step through it.</p>
+    <div class="split-grid">
+      <div class="card split-stage">
+        <canvas id="splitCanvas" aria-label="A parking lot counted by recursive subdivision"></canvas>
+      </div>
+      <div class="split-side">
+        <div class="controls">
+          <button type="button" class="btn btn-primary" id="splitStep">Step</button>
+          <button type="button" class="btn" id="splitRun">Run to the end</button>
+          <button type="button" class="btn" id="splitReset">Reset</button>
+        </div>
+        <label class="switch"><input type="checkbox" id="splitZero" checked />
+          <span class="track" aria-hidden="true"></span>Distrust a zero from a reduced view</label>
+        <div class="readout" id="splitReadout" aria-live="polite"></div>
+        <p class="fine">Simulated VLM with the behaviour measured above: exact within the horizon, a round-number
+          undercount beyond it, and blind to objects smaller than about four pixels in the view it is shown. The real
+          model is not quite exact within the horizon.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── places ─────────────────────────── -->
+<section class="block" id="places">
+  <div class="container">
+    <div class="kicker">Hierarchical referring</div>
+    <h2>Find the <em>place</em> first, then look inside it.</h2>
+    <p class="lede">Small objects are usually named through the place that contains them. On a 10,000-pixel image shown
+      whole, the place is visible and the object is not. GeoScope grounds the place, then searches for the object inside
+      the place's window, which the same pixel budget shows at close to native resolution.</p>
+    <div class="question">&ldquo;Where is <b>the grey tennis court</b> in <b>the residential area right of centre</b>
+      relative to the sports field?&rdquo;</div>
+    <div class="seg-wrap">
+      <div class="seg" role="group" aria-label="How the court is grounded" id="refMode">
+        <button type="button" data-step="0" aria-pressed="true">Whole image</button>
+        <button type="button" data-step="1" aria-pressed="false">1 &middot; Ground the place</button>
+        <button type="button" data-step="2" aria-pressed="false">2 &middot; Search inside it</button>
+      </div>
+    </div>
+    <div class="card ref-stage">
+      <canvas id="refCanvas" aria-label="Grounding a tennis court on the whole image versus inside its residential area"></canvas>
+      <div class="ref-hud" id="refHud" aria-live="polite"></div>
+    </div>
+    <div class="callout"><span class="dot"></span><div>A real failure from our development split, redrawn.
+      On the OSR development questions, <b>grounding the place first raises accuracy from 49 to 56%</b>.</div></div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── directions ─────────────────────────── -->
+<section class="block alt" id="directions">
+  <div class="container">
+    <div class="kicker">Geometry from boxes</div>
+    <h2>Directions computed from the <em>extents</em> of the two boxes.</h2>
+    <p class="lede">The angle between two box centres misreads large objects. GeoScope tiles the plane by the reference
+      object's extent, like the panes of a window lattice, and averages the tiles the target covers, as the
+      direction-relation matrix of spatial databases does. Drag either box.</p>
+    <div class="cdc-grid">
+      <div class="card cdc-stage">
+        <svg id="cdcSvg" viewBox="0 0 560 360" role="img" aria-label="Two draggable boxes and the direction between them"></svg>
+      </div>
+      <div class="cdc-side">
+        <div class="presets" role="group" aria-label="Examples">
+          <button type="button" class="chip" data-preset="wide">Above a wide building</button>
+          <button type="button" class="chip" data-preset="diag">A clear diagonal</button>
+          <button type="button" class="chip" data-preset="long">Beside a long pier</button>
+        </div>
+        <div class="verdicts" id="cdcOut" aria-live="polite"></div>
+        <p class="fine">On OSR the matrix adds 10 development and 2.0 test points over the angle between box
+          centres.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── results ─────────────────────────── -->
+<section class="block" id="results">
+  <div class="container">
+    <div class="kicker">Results</div>
+    <h2>The same frozen VLM, <em>10 to 16 points</em> better on held-out tests.</h2>
+    <p class="lede">All design decisions were made on a 20% development split. Each frozen version then ran once on the
+      remaining 80%. Bars show test accuracy with 95% bootstrap intervals. Every reproduced method ran its official code
+      on the same test questions, and its gain is measured against its own zero-shot backbone: Qwen3-VL-8B for WeaveEarth,
+      GazeEarth and RAP, LLaVA-OV-7B for ZoomSearch.</p>
+    <div class="seg-wrap">
+      <div class="seg" role="group" aria-label="Vision-language model" id="resBackbone">
+        <button type="button" data-bb="8b" aria-pressed="true">Qwen3-VL-8B</button>
+        <button type="button" data-bb="llava" aria-pressed="false">LLaVA-OV-7B</button>
+        <button type="button" data-bb="4b" aria-pressed="false">Qwen3-VL-4B</button>
+        <button type="button" data-bb="q25" aria-pressed="false">Qwen2.5-VL-7B</button>
+      </div>
+    </div>
+    <div class="card chart-card">
+      <div class="legend" id="resLegend"></div>
+      <div class="chart" id="resChart"></div>
+      <div class="deltas" id="resDeltas"></div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <h3>XLRS-Bench, published results</h3>
+        <p class="sub">All questions unless noted. Average: over the 13 subtasks; by question: over all 3,080. Programs
+          answer RC, OSR and overall counting, close-ups answer the questions that give a pixel box, and the backbone the
+          rest.</p>
+        <div class="tbl-wrap"><table class="tbl" id="xlrsTable"></table></div>
+      </div>
+      <div class="card">
+        <h3>MME-RealWorld remote sensing</h3>
+        <p class="sub">All questions unless noted. GeoScope answers position and colour with its backbone's zero-shot
+          answers.</p>
+        <div class="tbl-wrap"><table class="tbl" id="mmeTable"></table></div>
+      </div>
+    </div>
+    <div class="two">
+      <div class="card">
+        <h3>UHR-Micro</h3>
+        <p class="sub">Test questions, official metric: a count earns partial credit by its relative error. Global,
+          regional and conditional counting; direction and distance between two marked objects.</p>
+        <div class="tbl-wrap"><table class="tbl" id="umicroTable"></table></div>
+      </div>
+      <div class="card chart-card">
+        <h3>Seconds per question</h3>
+        <p class="sub">MME-RS counting on one RTX 3090. GeoScope and zero-shot answering are timed from scratch on
+          development questions, synthesis included; the reproduced methods on the test questions. ZoomSearch and RAP
+          include swapping their two models in and out of memory.</p>
+        <div class="chart" id="effChart"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── real examples ─────────────────────────── -->
+<section class="block alt" id="examples">
+  <div class="container">
+    <div class="kicker">Real examples</div>
+    <h2>Six test questions, and what the executor <em>did</em> with them.</h2>
+    <p class="lede">Images from XLRS-Bench and MME-RealWorld. Every box, window and count drawn on them is the
+      executor's own logged value for that question. The six were picked to show each mechanism, and two of them are
+      failures.</p>
+    <div class="ex-tabs" id="exTabs" role="tablist" aria-label="Examples"></div>
+    <div class="ex-grid">
+      <div class="card ex-stage">
+        <div class="seg-wrap">
+          <div class="seg" role="group" aria-label="View" id="exView">
+            <button type="button" data-v="whole" aria-pressed="true">Whole image</button>
+            <button type="button" data-v="zoom" aria-pressed="false">Where it looked</button>
+          </div>
+        </div>
+        <div class="ex-view"><img id="exImg" alt="" /><svg id="exSvg" aria-hidden="true"></svg></div>
+        <div class="legend" id="exLegend"></div>
+      </div>
+      <div class="ex-side" id="exSide" role="tabpanel" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── limits ─────────────────────────── -->
+<section class="block" id="limits">
+  <div class="container">
+    <div class="kicker">Where it does not help</div>
+    <h2>Failures and limits on the <em class="pk">test split</em>.</h2>
+    <div class="limit-cards" id="limitCards"></div>
+  </div>
+</section>
+
+<!-- ─────────────────────────── bibtex ─────────────────────────── -->
+<section class="block alt" id="bibtex">
+  <div class="container narrow">
+    <div class="kicker">Citation</div>
+    <h2>BibTeX</h2>
+    <div class="bib">
+      <button class="btn copy" id="copyBib" type="button">Copy</button>
+<pre id="bibText">@misc{geoscope2026,
+  title  = {GeoScope: Training-Free Program Execution beyond the Counting Horizon
+            for Ultra-High-Resolution Remote Sensing Question Answering},
+  author = {Deng, Guohui and Jiang, Yuhang and Wang, Chengjun and Hu, Zhongwen and
+            Wu, Zhaocong and Huang, Linsheng and Zhao, Jinling and Ruan, Chao and Xu, Miaozhong and Chen, Chi},
+  year   = {2026},
+  note   = {Preprint}
+}</pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <svg class="orn" id="footBranch" viewBox="0 0 220 54" aria-hidden="true"></svg>
+    GeoScope &middot; 2026 &middot; Guohui Deng, Yuhang Jiang et al.
+  </div>
+</footer>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script src="static/data/data.js"></script>
+<script src="static/data/horizon.js"></script>
+<script src="static/data/examples.js"></script>
+<script src="static/data/intro.js"></script>
+<script src="static/js/app.js"></script>
+</body>
+</html>
