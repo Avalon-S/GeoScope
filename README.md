@@ -1,13 +1,13 @@
-# GeoScope
+# GeoScope: Training-Free Program Execution beyond the Counting Horizon for Ultra-High-Resolution Remote Sensing Question Answering
 
-**Training-Free Program Execution beyond the Counting Horizon for Ultra-High-Resolution Remote Sensing Question Answering**
+![Paper](https://img.shields.io/badge/Paper-arXiv%20coming%20soon-red)
+[![Project Page](https://img.shields.io/badge/Project-Page-blue)](https://avalon-s.github.io/GeoScope/)
+![Code](https://img.shields.io/badge/Code-on%20publication-lightgrey)
 
 Guohui Deng\*†, Yuhang Jiang\*, Chengjun Wang, Zhongwen Hu, Zhaocong Wu, Linsheng Huang, Jinling Zhao, Chao Ruan,
 Miaozhong Xu, Chi Chen
 
 \* Equal contribution · † Corresponding author
-
-[Project page](https://avalon-s.github.io/GeoScope/) · Paper (arXiv, coming soon) · Code (on publication)
 
 ## Overview
 
