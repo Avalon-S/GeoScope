@@ -1,6 +1,6 @@
 # GeoScope: Training-Free Program Execution beyond the Counting Horizon for Ultra-High-Resolution Remote Sensing Question Answering
 
-![Paper](https://img.shields.io/badge/Paper-arXiv%20coming%20soon-red)
+[![Paper](https://img.shields.io/badge/Paper-arXiv%3A2611.12699-red)](https://arxiv.org/abs/2611.12699)
 [![Project Page](https://img.shields.io/badge/Project-Page-blue)](https://avalon-s.github.io/GeoScope/)
 ![Code](https://img.shields.io/badge/Code-on%20publication-lightgrey)
 
@@ -45,13 +45,16 @@ Supplementary Material.
 ## Citation
 
 ```bibtex
-@misc{geoscope2026,
-  title  = {GeoScope: Training-Free Program Execution beyond the Counting Horizon
-            for Ultra-High-Resolution Remote Sensing Question Answering},
-  author = {Deng, Guohui and Jiang, Yuhang and Wang, Chengjun and Hu, Zhongwen and
-            Wu, Zhaocong and Huang, Linsheng and Zhao, Jinling and Ruan, Chao and Xu, Miaozhong and Chen, Chi},
-  year   = {2026},
-  note   = {Preprint}
+@misc{deng2026geoscope,
+  title         = {GeoScope: Training-Free Program Execution beyond the Counting Horizon
+                   for Ultra-High-Resolution Remote Sensing Question Answering},
+  author        = {Deng, Guohui and Jiang, Yuhang and Wang, Chengjun and Hu, Zhongwen and
+                   Wu, Zhaocong and Huang, Linsheng and Zhao, Jinling and Ruan, Chao and Xu, Miaozhong and Chen, Chi},
+  year          = {2026},
+  eprint        = {2611.12699},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CV},
+  url           = {https://arxiv.org/abs/2611.12699}
 }
 ```
 
